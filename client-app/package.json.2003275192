@@ -8,7 +8,6 @@
     "@testing-library/user-event": "^7.2.1",
     "@types/react-router-dom": "^5.1.6",
     "@types/react-widgets": "^4.3.3",
-    "@types/revalidate": "^1.1.2",
     "@types/uuid": "^8.3.0",
     "axios": "^0.20.0",
     "date-fns": "^2.0.0-alpha.13",

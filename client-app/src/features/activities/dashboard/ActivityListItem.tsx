@@ -1,3 +1,4 @@
+import { format } from 'date-fns';
 import React from 'react';
 //import  { useContext } from 'react';
 import { Link } from 'react-router-dom';
@@ -24,7 +25,7 @@ const ActivityListItem: React.FC<{ activity: IActivity }> = ({ activity }) => {
                 </Item.Group>
             </Segment>
             <Segment>
-                <Icon name='clock' /> {activity.date}
+                <Icon name='clock' /> {format(activity.date,'h:mm a')}
                 <Icon name='marker' /> {activity.venue}, {activity.city}
             </Segment>
             <Segment secondary>
