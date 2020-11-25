@@ -7,8 +7,7 @@ import { IActivity } from '../../../app/models/activity';
 //import ActivityStore from '../../../app/stores/activityStore';
 
 const ActivityListItem: React.FC<{ activity: IActivity }> = ({ activity }) => {
-    //const activityStore = useContext(ActivityStore);
-    //const { deleteActivity, submitting, target } = activityStore;
+    
     return (
         <Segment.Group>
             <Segment>
