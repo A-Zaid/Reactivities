@@ -18,6 +18,7 @@ export default class UserStore {
     @action login = async (values: IUserFormValues) => {
         try {
             const user = await agent.User.login(values);
+            console.log(values);
             runInAction(() => {
                 this.user = user;
             })
@@ -26,6 +27,7 @@ export default class UserStore {
             history.push('/activities')
         } catch (error) {
             throw error;
+            //console.log(error)
         }
     }
 
