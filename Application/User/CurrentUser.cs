@@ -1,3 +1,4 @@
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Application.Interfaces;
@@ -29,14 +30,14 @@ namespace Application.User
 
             public async Task<User> Handle(Query request, CancellationToken cancellationToken)
             {
-               var user = await _userManager.FindByNameAsync(_userAccessor.getCurrentUserName());
-               return new User
-               {
-                   DisplayName=user.DisplayName,
-                   UserName=user.UserName,
-                   Token=_jwtGenerator.CreateToken(user),
-                   Image=null
-               };
+                var user = await _userManager.FindByNameAsync(_userAccessor.getCurrentUserName());
+                return new User
+                {
+                    DisplayName = user.DisplayName,
+                    UserName = user.UserName,
+                    Token = _jwtGenerator.CreateToken(user),
+                    Image = user.Photos.FirstOrDefault(x => x.IsMain)?.Url
+                };
             }
         }
     }
