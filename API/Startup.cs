@@ -27,6 +27,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc.Authorization;
 using AutoMapper;
 using Infrastructure.Photos;
+using API.SignalR;
 
 namespace API
 {
@@ -47,17 +48,23 @@ namespace API
                 opt.UseLazyLoadingProxies();
                 opt.UseSqlite(Configuration.GetConnectionString("DefaultConnection"));
             });
-
             services.AddCors(opt =>
             {
                 opt.AddPolicy("CorsPolicy", policy =>
                     {
-                        policy.AllowAnyHeader().AllowAnyMethod().AllowAnyOrigin();//.WithOrigins("http://localhost:3000");                
+                        //  policy.AllowAnyHeader().AllowAnyMethod().AllowAnyOrigin();//.WithOrigins("http://localhost:3000");  
+                        policy.AllowAnyHeader()
+                        .AllowAnyMethod()
+                        .WithOrigins("http://localhost:3000")
+                        //.WithOrigins("http://localhost:5000")
+                       // .AllowAnyOrigin()
+                        .AllowCredentials();
                     });
             });
             services.AddMediatR(typeof(List.Handler).Assembly);
             services.AddAutoMapper(typeof(List.Handler));
-            services.AddControllers(opt => 
+            services.AddSignalR();
+            services.AddControllers(opt =>
             {
                 var policy = new AuthorizationPolicyBuilder().RequireAuthenticatedUser().Build();
                 opt.Filters.Add(new AuthorizeFilter(policy));
@@ -78,7 +85,7 @@ namespace API
                     policy.Requirements.Add(new IsHostRequirement());
                 });
             });
-            services.AddTransient<IAuthorizationHandler,IsHostRequirementHandler>();
+            services.AddTransient<IAuthorizationHandler, IsHostRequirementHandler>();
 
             var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(Configuration["TokenKey"]));
             services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
@@ -91,11 +98,24 @@ namespace API
                     ValidateAudience = false,
                     ValidateIssuer = false
                 };
+                opt.Events = new JwtBearerEvents
+                {
+                    OnMessageReceived = context =>
+                    {
+                        var accessToken = context.Request.Query["access_token"];
+                        var path = context.HttpContext.Request.Path;
+                        if (!string.IsNullOrEmpty(accessToken) && path.StartsWithSegments("/chat"))
+                        {
+                            context.Token = accessToken;
+                        }
+                        return Task.CompletedTask;
+                    }
+                };
             });
 
             services.AddScoped<IJwtGenerator, JwtGenerator>();
-            services.AddScoped<IUserAccessor,UserAccessor>();
-            services.AddScoped<IPhotoAccessor,PhotoAccessor>();
+            services.AddScoped<IUserAccessor, UserAccessor>();
+            services.AddScoped<IPhotoAccessor, PhotoAccessor>();
             services.Configure<CloudinarySettings>(Configuration.GetSection("Cloudinary"));
         }
 
@@ -111,15 +131,20 @@ namespace API
             // app.UseHttpsRedirection();
 
             app.UseRouting();
-            app.UseCors("CorsPolicy");
-            app.UseAuthentication();
             app.UseAuthorization();
-
-
+            app.UseAuthentication();
+            app.UseCors("CorsPolicy");
+           // app.UseSignalR(routes => { routes.MapHub<ChatHub>("/chat");});
             app.UseEndpoints(endpoints =>
-            {
-                endpoints.MapControllers();
-            });
+                        {
+                            endpoints.MapControllers();
+                            endpoints.MapHub<ChatHub>("/chat");
+                        });
+
+
+
+           
+
         }
     }
 }

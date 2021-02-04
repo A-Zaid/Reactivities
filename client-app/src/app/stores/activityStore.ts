@@ -6,6 +6,9 @@ import agent from '../api/agent';
 import { createAttendee, setActivityProps } from '../api/common/util/util';
 import { IActivity } from '../models/activity';
 import { RootStore } from './rootStore';
+import { HubConnection, HubConnectionBuilder, LogLevel } from '@microsoft/signalr';
+
+
 
 
 export default class ActivityStore {
@@ -14,12 +17,64 @@ export default class ActivityStore {
         this.rootStore = rootStore;
     }
 
+
     @observable activityRegistry = new Map();
     @observable activity: IActivity | null = null;
     @observable loadingInitial = false;
     @observable submitting = false;
     @observable target = '';
     @observable loading = false;
+    @observable.ref hubConnection: HubConnection | null = null;
+
+    @action createHubConnection = (activityId: string) => {
+        this.hubConnection = new HubConnectionBuilder()
+            .withUrl('http://localhost:5000/chat', {
+                accessTokenFactory: () => this.rootStore.commonStore.token!
+            })
+            .configureLogging(LogLevel.Information)
+            .build();
+
+        this.hubConnection
+            .start()
+            .then(() => console.log(this.hubConnection!.state))
+            .then(() => {
+                console.log('Attempting to join group');
+                if (this.hubConnection!.state === 'Connected') {
+                    this.hubConnection!.invoke('AddToGroup', activityId);
+                }
+            })
+            .catch(error => console.log('Error establishing connection: ', error));
+
+        this.hubConnection.on('ReceiveComment', comment => {
+            runInAction(() => {
+                this.activity!.comments.push(comment);
+            })
+        })
+
+        this.hubConnection.on('Send', message => {
+            toast.info(message);
+        })
+    }
+
+
+
+    @action stopHubConnection = () => {
+        this.hubConnection!.invoke('RemoveFromGroup', this.activity!.id)
+            .then(() => {
+                this.hubConnection!.stop();
+            })
+            .then(() => console.log('Connection stopped'))
+            .catch((err) => console.log(err));
+    }
+
+    @action addComment = async (values: any) => {
+        values.activityId = this.activity!.id;
+        try {
+            await this.hubConnection!.invoke('SendComment', values)
+        } catch (error) {
+            console.log(error)
+        }
+    }
 
     @computed get activitiesByDate() {
         return this.groupActivitiesByDate(Array.from(this.activityRegistry.values()));
@@ -95,11 +150,12 @@ export default class ActivityStore {
         try {
             await agent.Activities.create(activity);
             const attendee = createAttendee(this.rootStore.userStore.user!);
-            attendee.isHost=true;
+            attendee.isHost = true;
             let attendees = [];
             attendees.push(attendee);
-            activity.attendees=attendees;
-            activity.isHost=true;
+            activity.attendees = attendees;
+            activity.comments = [];
+            activity.isHost = true;
             runInAction(() => {
                 this.activityRegistry.set(activity.id, activity);
                 this.submitting = false;
@@ -187,7 +243,7 @@ export default class ActivityStore {
             })
         } catch (error) {
             runInAction(() => {
-                this.loading=false;
+                this.loading = false;
             })
             toast.error('Problem cancelling attendance');
         }
