@@ -56,9 +56,8 @@ namespace API
                         //  policy.AllowAnyHeader().AllowAnyMethod().AllowAnyOrigin();//.WithOrigins("http://localhost:3000");  
                         policy.AllowAnyHeader()
                         .AllowAnyMethod()
-                        .WithOrigins("http://localhost:3000")
-                        //.WithOrigins("http://localhost:5000")
-                       // .AllowAnyOrigin()
+                        .WithOrigins(Configuration.GetSection("AllowedOrigins").Get<string[]>())
+                        //.AllowAnyOrigin()
                         .AllowCredentials();
                     });
             });
